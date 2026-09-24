@@ -126,11 +126,42 @@ function esc(v){return String(v).replace(/[&<>'"]/g,c=>({'&':'&amp;','<':'&lt;',
 function hostId(){return [state.id,...state.peers.keys()].sort()[0]||state.id}
 function amHost(){return state.isCpu || hostId()===state.id}
 function roster(){
-  const humans=[...state.infos.values()].filter(x=>!x.cpu).sort((a,b)=>a.id.localeCompare(b.id));
+  // 接続直後にhelloがまだ届いていない相手も拾う
+  const map=new Map();
+  for(const p of state.infos.values()){
+    if(!p.cpu) map.set(p.id,{id:p.id,name:p.name||'Pineapple',cpu:false});
+  }
+  for(const peer of state.peers.keys()){
+    if(peer!==state.id && !map.has(peer)){
+      map.set(peer,{id:peer,name:'Pineapple',cpu:false});
+    }
+  }
+
+  const humans=[...map.values()].sort((a,b)=>a.id.localeCompare(b.id));
   const list=humans.map(x=>({...x}));
-  if(state.cpuFill){let i=0;while(list.length<10){const teamRed=list.filter(x=>x.team==='red').length;const red=teamRed<5;list.push({id:`cpu-${red?'red':'blue'}-${i++}`,name:`CPU ${i}`,cpu:true})}}
-  list.forEach((p,i)=>p.team=i%2===0?'red':'blue');
-  return list.slice(0,10)
+
+  // 2人プレイなら必ず赤1人・青1人。
+  // 3～10人でも交互に振り分け、各チーム最大5人。
+  list.forEach((p,i)=>{
+    p.team=(i%2===0)?'red':'blue';
+  });
+
+  if(state.cpuFill){
+    let cpuIndex=0;
+    while(list.length<10){
+      const redCount=list.filter(x=>x.team==='red').length;
+      const blueCount=list.filter(x=>x.team==='blue').length;
+      const team=redCount<blueCount ? 'red' : (blueCount<redCount ? 'blue' : (list.length%2===0 ? 'red' : 'blue'));
+      list.push({
+        id:`cpu-${team}-${cpuIndex++}`,
+        name:`CPU ${cpuIndex}`,
+        cpu:true,
+        team
+      });
+    }
+  }
+
+  return list.slice(0,10);
 }
 
 // ---------- Nostr public room directory ----------
@@ -199,7 +230,7 @@ function updateLobby(){
   const people=roster().filter(x=>!x.cpu),red=people.filter(x=>x.team==='red'),blue=people.filter(x=>x.team==='blue');
   renderPlayers('redPlayers',red);renderPlayers('bluePlayers',blue);
   $('redCount').textContent=`${Math.min(5,red.length)}/5`;$('blueCount').textContent=`${Math.min(5,blue.length)}/5`;
-  $('lobbyHint').textContent=state.cpuFill?`現在 ${people.length}人 + CPU補充。ゲーム中も最大10人です。`:'最大10人。人が少ない場合はCPUなしで開始できます。';
+  $('lobbyHint').textContent=state.cpuFill?`現在 ${people.length}人 + CPU補充。2人なら赤1人・青1人で開始できます。`:`現在 ${people.length}人。2人いれば赤1人・青1人で開始できます。最大10人です。`;
 }
 function renderPlayers(id,arr){const el=$(id);el.innerHTML='';if(!arr.length){el.innerHTML='<div class="empty">待機中…</div>';return}for(const p of arr){const d=document.createElement('div');d.className='player'+(p.id===state.id?' me':'');d.innerHTML=`<span class="dot"></span><span>${esc(p.name)}</span>${p.id===state.id?'<span style="margin-left:auto;opacity:.45">YOU</span>':''}`;el.appendChild(d)}}
 function net(data,opt){if(!state.room)return;try{return state.roomAction?.send(data,opt)}catch(_){}}
@@ -300,7 +331,7 @@ function newGame(rosterList){
 }
 function serialize(){return JSON.parse(JSON.stringify(state.game))}
 function beginNetworkGame(game){cleanupThree();state.game=game?game:newGame(roster());state.started=true;buildWorld();show('game');$('result').classList.add('hidden');showToast('ゲーム開始！');updateHUD()}
-function startNetwork(){if(!amHost())return;const g=newGame(roster());state.game=g;state.started=true;buildWorld();show('game');$('result').classList.add('hidden');net({type:'start',state:g});announceRoom()}
+function startNetwork(){if(!amHost())return;const list=roster();if(list.length<2){alert('オンライン対戦は2人以上で開始できます。\n\n同じROOM CODEにもう1人参加してください。');return}const g=newGame(list);state.game=g;state.started=true;buildWorld();show('game');$('result').classList.add('hidden');net({type:'start',state:g});announceRoom()}
 function startCPU(){saveName();state.isCpu=true;state.roomId='CPU';state.roomName='CPU 5 vs 5';state.publicRoom=false;state.cpuFill=true;state.room=null;state.infos=new Map([[state.id,{id:state.id,name:state.name,cpu:false}]]);show('room');updateLobby();$('roomCodeBox').classList.add('hidden')}
 
 function tryStack(id){
