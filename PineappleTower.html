@@ -1,0 +1,318 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>PineappleTower</title>
+<script src="https://unpkg.com/nostr-tools/lib/nostr.bundle.js"></script>
+<style>
+:root{font-family:Inter,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;color:#18361f;background:#dff6d2}
+*{box-sizing:border-box}html,body{width:100%;height:100%;margin:0;overflow:hidden}body{min-width:320px}button,input{font:inherit}button{border:0;cursor:pointer}
+.screen{position:absolute;inset:0;display:none}.screen.active{display:flex}
+#menuScreen{align-items:center;justify-content:center;background:radial-gradient(circle at 20% 18%,rgba(255,216,92,.35),transparent 28%),radial-gradient(circle at 82% 80%,rgba(82,194,121,.35),transparent 32%),linear-gradient(145deg,#f2ffdf,#c7f0bf 50%,#9edda9)}
+#menuScreen:after{content:"🍍";position:absolute;font-size:min(36vw,340px);right:3vw;bottom:-40px;opacity:.08;transform:rotate(-18deg)}
+.card{position:relative;z-index:2;width:min(760px,calc(100% - 30px));padding:38px;border-radius:30px;background:rgba(250,255,245,.83);border:1px solid rgba(255,255,255,.9);box-shadow:0 30px 80px rgba(34,91,44,.2);backdrop-filter:blur(18px)}
+.eyebrow{font-size:11px;font-weight:1000;letter-spacing:.18em;opacity:.55}.title{font-size:clamp(50px,10vw,92px);line-height:.86;letter-spacing:-.06em;margin:14px 0 18px;font-weight:1000}.title span{display:block}.subtitle{margin:0 auto 28px;max-width:590px;font-weight:800;color:#4b6a51;text-align:center}
+.name-wrap{display:grid;gap:7px;margin:0 auto 12px;max-width:520px}.name-wrap label,.modal-card label{font-size:11px;font-weight:1000;letter-spacing:.06em}.input{width:100%;padding:14px 16px;border:1px solid rgba(35,76,43,.13);border-radius:14px;background:rgba(255,255,255,.88);outline:none}.input:focus{border-color:#8bc58a;box-shadow:0 0 0 4px rgba(107,183,104,.14)}
+.buttons{display:grid;gap:11px;max-width:520px;margin:0 auto}.primary,.secondary{padding:14px 18px;border-radius:14px;font-weight:1000;transition:.18s}.primary{background:linear-gradient(135deg,#ffd55a,#f1ac3e);color:#3e2b08;box-shadow:0 10px 24px rgba(225,160,49,.22)}.secondary{background:rgba(255,255,255,.82);color:#24452b;border:1px solid rgba(36,69,43,.1)}.primary:hover,.secondary:hover{transform:translateY(-2px)}.primary:disabled{opacity:.42;cursor:not-allowed;transform:none}.status{text-align:center;font-size:12px;font-weight:850;opacity:.62;margin-top:16px}
+.modal{position:fixed;inset:0;background:rgba(23,51,30,.34);display:flex;align-items:center;justify-content:center;z-index:20}.modal.hidden{display:none}.modal-card{width:min(500px,calc(100% - 28px));padding:26px;border-radius:24px;background:#f8fff4;box-shadow:0 26px 80px rgba(17,56,23,.25);display:grid;gap:14px}.modal-card h2{margin:0;font-size:31px}.modal-card label{display:grid;gap:7px}.check{display:flex!important;align-items:center;grid-template-columns:auto 1fr;gap:8px;background:#eff7eb;border-radius:12px;padding:11px 12px}.modal-actions{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:4px}
+.panel{width:min(980px,calc(100% - 26px));max-height:calc(100% - 26px);overflow:auto;margin:auto;padding:28px;border-radius:26px;background:rgba(250,255,245,.9);border:1px solid rgba(255,255,255,.9);box-shadow:0 28px 80px rgba(35,84,43,.2);backdrop-filter:blur(18px)}
+#roomScreen,#roomsScreen{align-items:center;justify-content:center;background:linear-gradient(145deg,#d4f4cb,#9bd8aa)}.head{display:flex;justify-content:space-between;gap:14px;align-items:flex-start;margin-bottom:18px}.head h2{margin:5px 0 0;font-size:34px;letter-spacing:-.04em}.small-btn{padding:10px 13px;border-radius:12px;background:#edf6e9;font-weight:900;color:#35573b}.room-code{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:11px 13px;border-radius:13px;background:#1e3c24;color:#fff;margin-bottom:16px}.room-code strong{font-size:22px;letter-spacing:.15em}.room-settings{display:grid;grid-template-columns:1.2fr 1fr;gap:10px;margin-bottom:15px}.room-settings label:not(.check){display:grid;gap:7px;font-size:11px;font-weight:1000}.team-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px}.team{padding:15px;border-radius:19px;background:rgba(255,255,255,.57);border:1px solid rgba(20,53,27,.07)}.team.red{box-shadow:inset 0 0 0 2px rgba(238,113,79,.08)}.team.blue{box-shadow:inset 0 0 0 2px rgba(81,143,229,.08)}.team-title{display:flex;justify-content:space-between;font-size:12px;font-weight:1000;margin-bottom:9px}.players{display:grid;gap:7px;min-height:170px}.player{padding:9px 11px;border-radius:11px;background:rgba(255,255,255,.75);font-size:13px;font-weight:850;display:flex;gap:9px;align-items:center}.dot{width:9px;height:9px;border-radius:50%;background:#7a9f79}.player.me{outline:2px solid rgba(238,174,65,.35)}.empty{display:grid;place-items:center;min-height:50px;color:#6a806e;font-size:12px;font-weight:750}.lobby-bottom{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-top:15px}.hint{font-size:12px;color:#617666;font-weight:760}.room-list{display:grid;gap:9px}.room-row{display:grid;grid-template-columns:1fr auto auto;gap:10px;align-items:center;padding:12px;border-radius:14px;background:rgba(255,255,255,.7);border:1px solid rgba(28,59,34,.06)}.room-name{font-weight:1000}.room-meta{font-size:11px;color:#6c7e70;margin-top:3px;font-weight:750}.count{font-weight:1000;font-size:13px}.room-empty{text-align:center;padding:45px 16px;color:#6b7c6e;font-weight:800}
+#gameScreen{background:#9fda9e}#gameCanvas{position:absolute;inset:0;width:100%;height:100%;display:block}.hud{position:absolute;z-index:4;pointer-events:none}.brand-chip,.timer-chip,.team-hud,.objective-hud,.ability-hud{background:rgba(18,48,25,.72);color:#fff;border:1px solid rgba(255,255,255,.12);backdrop-filter:blur(10px);box-shadow:0 10px 30px rgba(13,45,19,.12)}.top-hud{top:16px;left:16px;right:16px;display:flex;justify-content:space-between;gap:10px}.brand-chip,.timer-chip{padding:9px 13px;border-radius:13px;font-weight:950}.timer-chip{display:flex;gap:9px;align-items:center}.timer-chip span{font-size:10px;opacity:.55;letter-spacing:.15em}.timer-chip strong{font-size:22px}.team-hud{top:72px;width:220px;padding:12px;border-radius:14px}.left-team-hud{left:16px}.right-team-hud{right:16px}.hud-title{font-size:11px;font-weight:1000;letter-spacing:.1em;margin-bottom:7px}.tower-bar{height:9px;background:rgba(255,255,255,.14);border-radius:99px;overflow:hidden}.tower-fill{height:100%;width:0%;transition:width .2s}.red-fill{background:#ff9a71}.blue-fill{background:#8bc6ff}.team-text{font-size:11px;opacity:.72;margin-top:5px}.objective-hud{left:50%;bottom:17px;transform:translateX(-50%);padding:10px 15px;border-radius:14px;text-align:center;min-width:min(670px,calc(100% - 24px))}.objective-main{font-size:13px;font-weight:950}.objective-main b{color:#ffd45c}.objective-sub{font-size:10px;opacity:.58;font-weight:700;margin-top:3px}.ability-hud{right:16px;bottom:17px;padding:10px 13px;border-radius:14px;font-size:11px;font-weight:1000}.toast{position:absolute;z-index:8;top:48%;left:50%;transform:translate(-50%,-50%) scale(.96);padding:11px 15px;border-radius:13px;background:rgba(19,47,24,.88);color:#fff;font-weight:900;opacity:0;transition:.18s;pointer-events:none}.toast.show{opacity:1;transform:translate(-50%,-50%) scale(1)}.result{position:absolute;inset:0;z-index:12;background:rgba(16,39,20,.42);display:flex;align-items:center;justify-content:center}.result.hidden{display:none}.result-card{text-align:center;width:min(540px,calc(100% - 28px));padding:30px;border-radius:24px;background:#f8fff4;box-shadow:0 28px 80px rgba(13,50,19,.3)}.result-card h2{font-size:38px;margin:8px 0 10px}.result-card p{color:#607263;font-weight:750;min-height:24px}
+@media(max-width:720px){.card,.panel{padding:22px}.team-grid{grid-template-columns:1fr}.room-settings{grid-template-columns:1fr}.lobby-bottom{flex-direction:column;align-items:stretch}.room-row{grid-template-columns:1fr auto}.room-row .join{grid-column:1/-1}.team-hud{width:160px}.objective-hud{bottom:70px}.ability-hud{bottom:16px}}
+</style>
+</head>
+<body>
+<div id="app">
+<section id="menuScreen" class="screen active">
+  <div class="card">
+    <div class="eyebrow" style="text-align:center">3D P2P PARTY GAME</div>
+    <h1 class="title" style="text-align:center">Pineapple<span>Tower</span></h1>
+    <p class="subtitle">5人ずつのチームで輪切りパイナップルになれ！ 5枚目の葉っぱまで先に完成させよう。🍍</p>
+    <div class="name-wrap"><label>PLAYER NAME</label><input id="playerName" class="input" maxlength="16" value="Pineapple" autocomplete="off"></div>
+    <div class="buttons">
+      <button id="createButton" class="primary">ルームを作る</button>
+      <button id="openRoomsButton" class="secondary">パブリックルームを見る</button>
+      <button id="cpuButton" class="secondary">CPU 5 vs 5 で遊ぶ</button>
+    </div>
+    <div id="connectionStatus" class="status">P2Pネットワークに接続準備中...</div>
+  </div>
+</section>
+
+<section id="roomScreen" class="screen">
+  <div class="panel">
+    <div class="head"><div><div class="eyebrow">LOBBY</div><h2 id="roomTitle">ルーム</h2></div><button id="leaveButton" class="small-btn">退出</button></div>
+    <div id="roomCodeBox" class="room-code"><span>ROOM CODE</span><strong id="roomCode">------</strong></div>
+    <div class="room-settings">
+      <label>ルーム名<input id="roomName" class="input" maxlength="24" value="Pineapple Tower"></label>
+      <label class="check"><input id="publicRoom" type="checkbox" checked> パブリック公開</label>
+      <label class="check"><input id="cpuFill" type="checkbox"> 10人になるまでCPUで補充</label>
+      <div class="hint" id="hostHint">ホストは自動選出されます。</div>
+    </div>
+    <div class="team-grid">
+      <div class="team red"><div class="team-title"><span>TEAM SUNSET</span><b id="redCount">0/5</b></div><div id="redPlayers" class="players"></div></div>
+      <div class="team blue"><div class="team-title"><span>TEAM SKY</span><b id="blueCount">0/5</b></div><div id="bluePlayers" class="players"></div></div>
+    </div>
+    <div class="lobby-bottom"><div class="hint" id="lobbyHint">参加者は自動で5人ずつのチームに振り分けられます。</div><button id="startButton" class="primary">ゲーム開始</button></div>
+  </div>
+</section>
+
+<section id="roomsScreen" class="screen">
+  <div class="panel">
+    <div class="head"><div><div class="eyebrow">PUBLIC ROOMS</div><h2>公開ルーム</h2></div><button id="roomsBackButton" class="small-btn">戻る</button></div>
+    <div style="display:grid;grid-template-columns:1fr auto;gap:9px;margin-bottom:13px"><input id="joinCode" class="input" maxlength="6" placeholder="ROOM CODE（例: A7K3PQ）" autocomplete="off"><button id="joinCodeButton" class="secondary">コードで参加</button></div>
+    <div id="roomList" class="room-list"></div>
+  </div>
+</section>
+
+<section id="gameScreen" class="screen">
+  <canvas id="gameCanvas"></canvas>
+  <div class="hud top-hud"><div class="brand-chip">🍍 PineappleTower</div><div class="timer-chip"><span>TIME</span><strong id="timer">05:00</strong></div></div>
+  <div class="hud team-hud left-team-hud"><div class="hud-title">TEAM SUNSET</div><div class="tower-bar"><div id="redTowerBar" class="tower-fill red-fill"></div></div><div class="team-text" id="redTowerText">0 / 5 枚</div></div>
+  <div class="hud team-hud right-team-hud"><div class="hud-title">TEAM SKY</div><div class="tower-bar"><div id="blueTowerBar" class="tower-fill blue-fill"></div></div><div class="team-text" id="blueTowerText">0 / 5 枚</div></div>
+  <div class="hud objective-hud"><div class="objective-main">タワーに近づいて <b>SPACE</b> で積む</div><div class="objective-sub">B: 2分ごとの爆弾 / WASD・矢印: 移動 / マウス: 視点</div></div>
+  <div class="hud ability-hud" id="bombStatus">💣 BOMB 2:00</div>
+  <div id="toast" class="toast"></div>
+  <div id="result" class="result hidden"><div class="result-card"><div class="eyebrow">GAME OVER</div><h2 id="resultTitle">TEAM WIN!</h2><p id="resultMessage"></p><button id="resultBack" class="primary">ロビーへ戻る</button></div></div>
+</section>
+
+<div id="createModal" class="modal hidden">
+  <div class="modal-card"><div class="eyebrow">CREATE ROOM</div><h2>ルームを作る</h2><label>ルーム名<input id="createRoomName" class="input" maxlength="24" value="Pineapple Tower"></label><label class="check"><input id="createPublic" type="checkbox" checked> パブリックルームとして公開</label><label class="check"><input id="createCpuFill" type="checkbox"> 足りない人数をCPUで補充</label><div class="modal-actions"><button id="createCancel" class="secondary">キャンセル</button><button id="createConfirm" class="primary">作成</button></div></div>
+</div>
+</div>
+
+<script type="importmap">
+{"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.186.0/build/three.module.js","trystero":"https://esm.run/trystero"}}
+</script>
+<script type="module">
+import * as THREE from 'three';
+import { joinRoom, selfId } from 'trystero';
+
+const T = window.NostrTools;
+const $ = id => document.getElementById(id);
+const CFG = {
+  maxPlayers:10, teamSize:5, gameSeconds:300, bombInterval:120, moveSpeed:5.2, arena:24,
+  rtcConfig:{iceServers:[{urls:'stun:stun.l.google.com:19302'},{urls:'stun:stun1.l.google.com:19302'}]},
+  appId:'pineappletower-public-v1',
+  relays:['wss://relay.damus.io','wss://nos.lol','wss://relay.primal.net']
+};
+const screens={menu:$('menuScreen'),room:$('roomScreen'),rooms:$('roomsScreen'),game:$('gameScreen')};
+const state={
+  id:selfId,name:localStorage.getItem('pineapple_name')||'Pineapple',roomId:null,roomName:'',publicRoom:true,cpuFill:false,
+  room:null,peers:new Map(),infos:new Map(),started:false,isCpu:false,game:null,three:null,keys:new Set(),yaw:0,pitch:.62,locked:false,lastSend:0,
+  nostrSk:null,roomAnnounceTimer:null,roomsTimer:null
+};
+state.infos.set(state.id,{id:state.id,name:state.name,cpu:false});
+
+function show(name){Object.values(screens).forEach(x=>x.classList.remove('active'));screens[name].classList.add('active')}
+function setStatus(x){$('connectionStatus').textContent=x}
+function saveName(){state.name=($('playerName').value.trim()||'Pineapple').slice(0,16);localStorage.setItem('pineapple_name',state.name);state.infos.set(state.id,{id:state.id,name:state.name,cpu:false})}
+function randomCode(){const chars='ABCDEFGHJKLMNPQRSTUVWXYZ23456789';let s='';for(let i=0;i<6;i++)s+=chars[Math.floor(Math.random()*chars.length)];return s}
+function esc(v){return String(v).replace(/[&<>'"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[c]))}
+function hostId(){return [state.id,...state.peers.keys()].sort()[0]||state.id}
+function amHost(){return state.isCpu || hostId()===state.id}
+function roster(){
+  const humans=[...state.infos.values()].filter(x=>!x.cpu).sort((a,b)=>a.id.localeCompare(b.id));
+  const list=humans.map(x=>({...x}));
+  if(state.cpuFill){let i=0;while(list.length<10){const teamRed=list.filter(x=>x.team==='red').length;const red=teamRed<5;list.push({id:`cpu-${red?'red':'blue'}-${i++}`,name:`CPU ${i}`,cpu:true})}}
+  list.forEach((p,i)=>p.team=i%2===0?'red':'blue');
+  return list.slice(0,10)
+}
+
+// ---------- Nostr public room directory ----------
+function initNostr(){
+  if(!T) return;
+  try{
+    const saved=localStorage.getItem('pineapple_nostr_key');
+    state.nostrSk=saved?Uint8Array.from(JSON.parse(saved)):T.generateSecretKey();
+    if(!saved)localStorage.setItem('pineapple_nostr_key',JSON.stringify([...state.nostrSk]));
+  }catch(e){state.nostrSk=null}
+}
+function roomEvent(room){
+  if(!T||!state.nostrSk)return null;
+  return T.finalizeEvent({kind:30078,created_at:Math.floor(Date.now()/1000),tags:[['d',room.id],['t','pineappletower'],['name',room.name],['players',String(room.players)],['max','10'],['public',room.public?'1':'0'],['expires_at',String(Math.floor(Date.now()/1000)+75)]],content:''},state.nostrSk)
+}
+async function announceRoom(){
+  if(!state.roomId||!state.publicRoom||state.isCpu||!state.room||!T||!state.nostrSk)return;
+  const ev=roomEvent({id:state.roomId,name:state.roomName,players:Math.min(10,state.infos.size),public:true});
+  if(!ev)return;
+  try{const pool=new T.SimplePool();await Promise.any(pool.publish(CFG.relays,ev));pool.close(CFG.relays)}catch(_){ }
+}
+async function closeRoomAnnounce(){
+  if(!state.roomId||!state.publicRoom||!T||!state.nostrSk)return;
+  const ev=T.finalizeEvent({kind:30078,created_at:Math.floor(Date.now()/1000),tags:[['d',state.roomId],['t','pineappletower'],['name',state.roomName],['players','0'],['max','10'],['closed','1'],['expires_at',String(Math.floor(Date.now()/1000)+8)]],content:''},state.nostrSk);
+  try{const pool=new T.SimplePool();await Promise.any(pool.publish(CFG.relays,ev));pool.close(CFG.relays)}catch(_){ }
+}
+async function loadPublicRooms(){
+  const list=$('roomList');list.innerHTML='<div class="room-empty">公開ルームを探しています… 🍍</div>';
+  if(!T){list.innerHTML='<div class="room-empty">公開ルーム機能を読み込めませんでした。</div>';return}
+  try{
+    const pool=new T.SimplePool();
+    const events=pool.querySync(CFG.relays,{kinds:[30078],'#t':['pineappletower'],since:Math.floor(Date.now()/1000)-90,limit:50});
+    pool.close(CFG.relays);
+    const map=new Map(),now=Math.floor(Date.now()/1000);
+    for(const ev of events){
+      const get=t=>ev.tags.find(x=>x[0]===t)?.[1];
+      const expires=Number(get('expires_at')||0);
+      if(get('closed')==='1'||expires<now)continue;
+      const id=get('d');if(!id)continue;
+      const current=map.get(id);if(!current||ev.created_at>current.created_at)map.set(id,{id,name:get('name')||'Pineapple Tower',players:Math.max(1,Number(get('players')||1)),max:10,created_at:ev.created_at});
+    }
+    renderRooms([...map.values()].sort((a,b)=>b.created_at-a.created_at));
+  }catch(e){list.innerHTML='<div class="room-empty">公開ルームを取得できませんでした。<br>ROOM CODEから参加できます。</div>'}
+}
+function renderRooms(rooms){
+  const list=$('roomList');list.innerHTML='';
+  if(!rooms.length){list.innerHTML='<div class="room-empty">まだ公開ルームがありません。<br>最初のパイナップルタワーを作ろう！ 🍍</div>';return}
+  for(const r of rooms){const row=document.createElement('div');row.className='room-row';row.innerHTML=`<div><div class="room-name">${esc(r.name)}</div><div class="room-meta">ROOM ${esc(r.id)} ・ P2Pルーム</div></div><div class="count">${r.players}/${r.max}</div><button class="primary join">参加</button>`;row.querySelector('.join').onclick=()=>joinPublicRoom(r.id,r.name);list.appendChild(row)}
+}
+
+// ---------- lobby ----------
+function updateLobby(){
+  if(!state.roomId)return;
+  const h=amHost();
+  $('roomTitle').textContent=state.roomName;
+  $('roomCode').textContent=state.roomId;
+  $('roomName').value=state.roomName;
+  $('roomName').disabled=!h;
+  $('publicRoom').checked=state.publicRoom;
+  $('publicRoom').disabled=!h;
+  $('cpuFill').checked=state.cpuFill;
+  $('cpuFill').disabled=!h;
+  $('startButton').disabled=!h;
+  $('startButton').textContent=h?'ゲーム開始':'ホストがゲーム開始するまで待機';
+  $('hostHint').textContent=h?`あなたがホストです（自動選出）`:`ホスト: ${esc(state.infos.get(hostId())?.name||'Pineapple')}`;
+  const people=roster().filter(x=>!x.cpu),red=people.filter(x=>x.team==='red'),blue=people.filter(x=>x.team==='blue');
+  renderPlayers('redPlayers',red);renderPlayers('bluePlayers',blue);
+  $('redCount').textContent=`${Math.min(5,red.length)}/5`;$('blueCount').textContent=`${Math.min(5,blue.length)}/5`;
+  $('lobbyHint').textContent=state.cpuFill?`現在 ${people.length}人 + CPU補充。ゲーム中も最大10人です。`:'最大10人。人が少ない場合はCPUなしで開始できます。';
+}
+function renderPlayers(id,arr){const el=$(id);el.innerHTML='';if(!arr.length){el.innerHTML='<div class="empty">待機中…</div>';return}for(const p of arr){const d=document.createElement('div');d.className='player'+(p.id===state.id?' me':'');d.innerHTML=`<span class="dot"></span><span>${esc(p.name)}</span>${p.id===state.id?'<span style="margin-left:auto;opacity:.45">YOU</span>':''}`;el.appendChild(d)}}
+function net(data,opt){if(!state.room)return;try{return state.roomAction?.send(data,opt)}catch(_){}}
+async function createRoom(){
+  saveName();
+  state.roomId=randomCode();state.roomName=($('createRoomName').value.trim()||'Pineapple Tower').slice(0,24);state.publicRoom=$('createPublic').checked;state.cpuFill=$('createCpuFill').checked;state.isCpu=false;
+  state.room=joinRoom({appId:CFG.appId,rtcConfig:CFG.rtcConfig},state.roomId);bindRoom();state.infos=new Map([[state.id,{id:state.id,name:state.name,cpu:false}]]);updateLobby();show('room');$('createModal').classList.add('hidden');announceRoom();setStatus('P2Pルーム作成完了');
+}
+async function joinPublicRoom(id,name){
+  saveName();
+  state.roomId=id.toUpperCase();state.roomName=name||'Pineapple Tower';state.publicRoom=true;state.cpuFill=false;state.isCpu=false;
+  state.room=joinRoom({appId:CFG.appId,rtcConfig:CFG.rtcConfig},state.roomId);bindRoom();state.infos=new Map([[state.id,{id:state.id,name:state.name,cpu:false}]]);updateLobby();show('room');setStatus('P2Pルームへ接続中…');
+}
+function bindRoom(){
+  const room=state.room;
+  const action=room.makeAction('pineapple-net');state.roomAction=action;
+  action.onMessage=(data,meta)=>handleNet(data,meta?.peerId);
+  room.onPeerJoin=peer=>{
+    state.peers.set(peer,room.getPeers()[peer]);
+    if(amHost() && state.peers.size > CFG.maxPlayers-1){
+      net({type:'full'},{target:peer});
+      try{state.peers.delete(peer)}catch(_){}
+      return;
+    }
+    net({type:'hello',name:state.name},{target:peer});
+    if(state.started&&amHost()&&state.game)net({type:'state',state:serialize()}, {target:peer});
+    updateLobby();announceRoom();
+  };
+  room.onPeerLeave=peer=>{
+    state.peers.delete(peer);state.infos.delete(peer);updateLobby();
+    if(state.started&&state.game)showToast(`${state.infos.get(peer)?.name||'Player'} が退出しました`)
+    if(hostId()===state.id&&state.started&&state.game){broadcastState()}
+    announceRoom();
+  };
+  for(const peer of Object.keys(room.getPeers())){state.peers.set(peer,room.getPeers()[peer]);net({type:'hello',name:state.name},{target:peer})}
+}
+function handleNet(data,peer){
+  if(!data)return;
+  if(data.type==='hello'){
+    if(peer)state.infos.set(peer,{id:peer,name:String(data.name||'Pineapple').slice(0,16),cpu:false});
+    net({type:'helloAck',name:state.name},{target:peer});updateLobby();announceRoom();
+    if(data.type&&state.started&&amHost()&&state.game)net({type:'state',state:serialize()},{target:peer});
+    return;
+  }
+  if(data.type==='helloAck'){if(peer)state.infos.set(peer,{id:peer,name:String(data.name||'Pineapple').slice(0,16),cpu:false});updateLobby();return}
+  if(data.type==='full'){showToast('このルームは満員です');try{state.room?.leave()}catch(_){}state.room=null;state.roomId=null;state.peers.clear();show('menu');setStatus('ルームが満員でした');return}
+  if(data.type==='start'){beginNetworkGame(data.state);return}
+  if(data.type==='input'&&amHost()&&state.game){const p=state.game.players[data.id];if(!p)return;p.x=THREE.MathUtils.clamp(Number(data.x)||0,-CFG.arena/2,CFG.arena/2);p.z=THREE.MathUtils.clamp(Number(data.z)||0,-CFG.arena/2,CFG.arena/2);if(data.stack)tryStack(data.id);if(data.bomb)tryBomb(data.id);return}
+  if(data.type==='state'&&!amHost()){applyState(data.state);return}
+  if(data.type==='event'){showToast(String(data.text||''));return}
+  if(data.type==='stop'){endGame(data.winner||'draw');return}
+}
+function broadcastState(){if(state.game)net({type:'state',state:serialize()})}
+
+// ---------- game state ----------
+function makePlayer(id,name,team,cpu=false,ready=0){return{id,name,team,cpu,x:team==='red'?-7:7,z:(Math.random()-.5)*1.8,stacked:false,slot:-1,knock:0,ready}}
+function newGame(rosterList){
+  const players={};rosterList.forEach((p,i)=>players[p.id]=makePlayer(p.id,p.name,p.team,p.cpu,p.cpu?6+i*4:0));
+  return{remaining:CFG.gameSeconds,ended:false,winner:null,players,teams:{red:{stack:[],bombReadyAt:CFG.bombInterval},blue:{stack:[],bombReadyAt:CFG.bombInterval}},obstacles:[],nextObstacle:17,oid:1}
+}
+function serialize(){return JSON.parse(JSON.stringify(state.game))}
+function beginNetworkGame(game){cleanupThree();state.game=game?game:newGame(roster());state.started=true;buildWorld();show('game');$('result').classList.add('hidden');showToast('ゲーム開始！');updateHUD()}
+function startNetwork(){if(!amHost())return;const g=newGame(roster());state.game=g;state.started=true;buildWorld();show('game');$('result').classList.add('hidden');net({type:'start',state:g});announceRoom()}
+function startCPU(){saveName();state.isCpu=true;state.roomId='CPU';state.roomName='CPU 5 vs 5';state.publicRoom=false;state.cpuFill=true;state.room=null;state.infos=new Map([[state.id,{id:state.id,name:state.name,cpu:false}]]);show('room');updateLobby();$('roomCodeBox').classList.add('hidden')}
+
+function tryStack(id){
+  if(!amHost()||!state.game||state.game.ended)return;const p=state.game.players[id];if(!p||p.stacked||p.knock>Date.now())return;const pad=state.three.pad[p.team];if(Math.hypot(p.x-pad.x,p.z-pad.z)>2.5)return;const s=state.game.teams[p.team].stack;if(s.length>=5)return;p.stacked=true;p.slot=s.length;s.push(id);p.x=pad.x;p.z=pad.z;broadcastEvent(`${p.name} が ${s.length}枚目！`);if(s.length===5){state.game.ended=true;state.game.winner=p.team;broadcastEvent(`🍍 TEAM ${p.team==='red'?'SUNSET':'SKY'} 完成！`);endGame(p.team)}}
+function tryBomb(id){
+  if(!amHost()||!state.game||state.game.ended)return;const p=state.game.players[id];if(!p)return;const team=p.team;const elapsed=CFG.gameSeconds-state.game.remaining;if(elapsed+0.15<state.game.teams[team].bombReadyAt)return;state.game.teams[team].bombReadyAt+=CFG.bombInterval;const enemy=team==='red'?'blue':'red';state.game.obstacles.push({id:`bomb-${state.game.oid++}`,type:'bomb',x:state.three.pad[enemy].x,y:12,z:0,target:enemy,p:0});broadcastEvent(`💣 ${team==='red'?'SUNSET':'SKY'} が爆弾を投下！`)}
+function collapse(team,count,reason){
+  const s=state.game.teams[team].stack;for(let i=0;i<Math.min(count,s.length);i++){const id=s.pop(),p=state.game.players[id];if(!p)continue;p.stacked=false;p.slot=-1;p.x=state.three.pad[team].x+(Math.random()-.5)*3.2;p.z=(Math.random()-.5)*3.1;p.knock=Date.now()+1100}s.forEach((id,i)=>{if(state.game.players[id])state.game.players[id].slot=i});broadcastEvent(`${reason} ${team==='red'?'SUNSET':'SKY'} のタワーが崩れた！`)}
+function broadcastEvent(text){showToast(text);if(state.roomAction)net({type:'event',text})}
+function spawnObstacle(){const types=['bird','coconut','wind'];const type=types[Math.floor(Math.random()*types.length)];const team=Math.random()<.5?'red':'blue';const pad=state.three.pad[team];const o={id:`o-${state.game.oid++}`,type,target:team,x:pad.x+(team==='red'?6:-6),y:type==='wind'?1.25:type==='coconut'?.55:5,z:-7,p:0};state.game.obstacles.push(o)}
+function updateHost(dt){
+  const g=state.game;g.remaining=Math.max(0,g.remaining-dt);const elapsed=CFG.gameSeconds-g.remaining;
+  if(elapsed>=g.nextObstacle&&!g.ended){spawnObstacle();g.nextObstacle+=26+Math.random()*18}
+  updateCPU(dt);updateObstacles(dt);
+  if(g.remaining<=0&&!g.ended){const r=g.teams.red.stack.length,b=g.teams.blue.stack.length;endGame(r===b?'draw':r>b?'red':'blue')}
+  if(performance.now()-state.lastSend>50){state.lastSend=performance.now();broadcastState()}
+}
+function updateCPU(dt){const g=state.game,elapsed=CFG.gameSeconds-g.remaining;for(const p of Object.values(g.players)){if(!p.cpu||p.stacked||Date.now()<p.knock||elapsed<p.ready)continue;const pad=state.three.pad[p.team],dx=pad.x-p.x,dz=pad.z-p.z,d=Math.hypot(dx,dz);if(d>1.9){p.x+=dx/Math.max(d,.01)*CFG.moveSpeed*.63*dt;p.z+=dz/Math.max(d,.01)*CFG.moveSpeed*.63*dt}else tryStack(p.id);const enemy=p.team==='red'?'blue':'red';if(elapsed>=g.teams[p.team].bombReadyAt&&Math.random()<.0025)tryBomb(p.id)}}
+function updateObstacles(dt){for(const o of state.game.obstacles){o.p+=dt/(o.type==='wind'?2.7:o.type==='bird'?4.2:3.8);const pad=state.three.pad[o.target];if(o.type==='bird'){o.x=THREE.MathUtils.lerp(o.x,pad.x,dt*.45);o.z=THREE.MathUtils.lerp(o.z,pad.z,dt*.8);o.y=5-Math.sin(Math.min(1,o.p)*Math.PI)*3.6}else if(o.type==='coconut'){o.x=THREE.MathUtils.lerp(o.x,pad.x,dt*.48);o.z=THREE.MathUtils.lerp(o.z,pad.z,dt*.7)}else if(o.type==='wind'){o.x=THREE.MathUtils.lerp(o.x,pad.x,dt*.6);o.z=THREE.MathUtils.lerp(o.z,pad.z,dt*.8);o.rx=(o.rx||0)+dt*4}else if(o.type==='bomb'){o.y-=dt*4.5}
+    if(o.p>=1&&!['bomb'].includes(o.type)){collapse(o.target,o.type==='bird'&&Math.random()<.22?2:1,o.type==='bird'?'🐦 鳥':o.type==='coconut'?'🥥 ヤシの実':'💨 突風');o.dead=true}if(o.type==='bomb'&&o.y<=1.1){collapse(o.target,2,'💣 爆弾');o.dead=true}}
+  state.game.obstacles=state.game.obstacles.filter(o=>!o.dead)}
+function applyState(s){if(!s)return;state.game=s;if(state.three)syncWorld();updateHUD();if(s.ended)showResult(s.winner)}
+function endGame(winner){if(!state.game)return;state.game.ended=true;state.game.winner=winner;if(state.roomAction)net({type:'stop',winner});showResult(winner)}
+function showResult(winner){const my=state.game?.players?.[state.id]?.team;const title=winner==='draw'?'DRAW — 引き分け！':`TEAM ${winner==='red'?'SUNSET':'SKY'} WIN!`;$('resultTitle').textContent=title;$('resultMessage').textContent=winner==='draw'?'5分終了。両チームの完成枚数が同じでした。':winner===my?'あなたのチームがパイナップルを完成させました！':'相手チームが先に完成しました。';$('result').classList.remove('hidden')}
+
+// ---------- three.js ----------
+function makeRenderer(){const r=new THREE.WebGLRenderer({canvas:$('gameCanvas'),antialias:true});r.setPixelRatio(Math.min(devicePixelRatio,2));r.setSize(innerWidth,innerHeight);r.shadowMap.enabled=true;r.outputColorSpace=THREE.SRGBColorSpace;return r}
+function createRing(team){const g=new THREE.Group();const body=new THREE.Mesh(new THREE.TorusGeometry(1.05,.24,18,48),new THREE.MeshStandardMaterial({color:0xf5c94e,roughness:.7}));body.castShadow=true;g.add(body);g.add(new THREE.Mesh(new THREE.TorusGeometry(.77,.08,10,48),new THREE.MeshStandardMaterial({color:0xffdf78,roughness:.7})));const edge=team==='red'?0xf18e5d:0x6ea8e7;for(let i=0;i<16;i++){const a=i*Math.PI*2/16;s=new THREE.Mesh(new THREE.SphereGeometry(.058,8,8),new THREE.MeshStandardMaterial({color:edge,roughness:1}));s.position.set(Math.cos(a)*1.02,.03*Math.sin(a*3),Math.sin(a)*1.02);g.add(s)}return g}
+function crown(){const g=new THREE.Group(),m=new THREE.MeshStandardMaterial({color:0x4fa542,roughness:.95});for(let i=0;i<7;i++){const a=i*Math.PI*2/7,l=new THREE.Mesh(new THREE.ConeGeometry(.17,1.15,5),m);l.position.set(Math.cos(a)*.22,.64,Math.sin(a)*.22);l.rotation.z=-Math.cos(a)*.4;l.rotation.x=-Math.sin(a)*.4;g.add(l)}return g}
+function obstacleMesh(type){const g=new THREE.Group();if(type==='bird'){g.add(new THREE.Mesh(new THREE.SphereGeometry(.36,12,8),new THREE.MeshStandardMaterial({color:0x505050,roughness:1})));for(const s of[-1,1]){const w=new THREE.Mesh(new THREE.CapsuleGeometry(.11,.72,6,8),new THREE.MeshStandardMaterial({color:0x7c7c7c,roughness:1}));w.rotation.z=s*.85;w.position.x=s*.45;g.add(w)}}else if(type==='coconut'){g.add(new THREE.Mesh(new THREE.SphereGeometry(.48,18,18),new THREE.MeshStandardMaterial({color:0x785431,roughness:1})))}else if(type==='bomb'){const b=new THREE.Mesh(new THREE.SphereGeometry(.34,16,16),new THREE.MeshStandardMaterial({color:0x26302a,roughness:.85})),f=new THREE.Mesh(new THREE.CylinderGeometry(.045,.045,.28,8),new THREE.MeshStandardMaterial({color:0xf5b84a}));f.position.y=.34;g.add(b,f)}else{const c=new THREE.Mesh(new THREE.ConeGeometry(.7,1.4,24),new THREE.MeshStandardMaterial({color:0xe7f6ff,transparent:true,opacity:.62,roughness:.4}));c.rotation.z=Math.PI/2;g.add(c)}return g}
+function buildWorld(){
+  const renderer=makeRenderer(),sc=new THREE.Scene();sc.background=new THREE.Color(0x9fda9e);sc.fog=new THREE.Fog(0x9fda9e,18,45);const camera=new THREE.PerspectiveCamera(58,innerWidth/innerHeight,.1,100);camera.position.set(0,8,14);
+  sc.add(new THREE.HemisphereLight(0xeaffdb,0x39533c,2));const sun=new THREE.DirectionalLight(0xffffff,3.1);sun.position.set(6,14,8);sun.castShadow=true;sun.shadow.mapSize.set(2048,2048);sc.add(sun);
+  const ground=new THREE.Mesh(new THREE.PlaneGeometry(CFG.arena,CFG.arena),new THREE.MeshStandardMaterial({color:0xa6db91,roughness:1}));ground.rotation.x=-Math.PI/2;ground.receiveShadow=true;sc.add(ground);
+  for(let i=-10;i<=10;i+=2){const line=new THREE.Mesh(new THREE.BoxGeometry(.025,.02,CFG.arena),new THREE.MeshStandardMaterial({color:0x7fb77d,roughness:1}));line.position.set(i,.01,0);sc.add(line)}
+  const pad={red:new THREE.Vector3(-5.4,0,0),blue:new THREE.Vector3(5.4,0,0)};for(const t of['red','blue']){const base=t==='red'?0xff9f7b:0x84c8ff;const p=new THREE.Mesh(new THREE.CylinderGeometry(2.15,2.15,.18,48),new THREE.MeshStandardMaterial({color:base,roughness:.7}));p.position.copy(pad[t]);p.position.y=.09;p.receiveShadow=true;sc.add(p);const ring=new THREE.Mesh(new THREE.TorusGeometry(2.15,.06,10,48),new THREE.MeshBasicMaterial({color:0xffffff}));ring.rotation.x=Math.PI/2;ring.position.copy(pad[t]);ring.position.y=.19;sc.add(ring)}
+  state.three={renderer:renderer,scene:sc,camera,pad,players:new Map(),obs:new Map(),last:performance.now()};syncWorld();requestAnimationFrame(loop)
+}
+function syncWorld(){if(!state.three||!state.game)return;const sc=state.three.scene;const ids=new Set(Object.keys(state.game.players));for(const[id,m]of state.three.players){if(!ids.has(id)){sc.remove(m);state.three.players.delete(id)}}for(const[id,p]of Object.entries(state.game.players)){let m=state.three.players.get(id);if(!m){m=createRing(p.team);state.three.players.set(id,m);sc.add(m)}if(p.stacked){const pad=state.three.pad[p.team];m.position.set(pad.x,.55+p.slot*.82,pad.z);m.userData.stacked=true}else{m.position.lerp(new THREE.Vector3(p.x,.75,p.z),.45);m.userData.stacked=false}m.userData.knock=Date.now()<p.knock;const has=!!m.userData.crown;if(p.stacked&&p.slot===4&&!has){m.userData.crown=crown();m.add(m.userData.crown)}if(!p.stacked&&has){m.remove(m.userData.crown);m.userData.crown=null}}
+  const oids=new Set(state.game.obstacles.map(o=>o.id));for(const[id,m]of state.three.obs){if(!oids.has(id)){sc.remove(m);state.three.obs.delete(id)}}for(const o of state.game.obstacles){let m=state.three.obs.get(o.id);if(!m){m=obstacleMesh(o.type);state.three.obs.set(o.id,m);sc.add(m)}m.position.set(o.x,o.y||0,o.z);m.rotation.set(o.rx||0,o.ry||0,o.rz||0)}
+}
+function localMove(dt){if(!state.game||state.game.ended)return;const p=state.game.players[state.id];if(!p||p.stacked||Date.now()<p.knock)return;let x=0,z=0;if(state.keys.has('KeyW')||state.keys.has('ArrowUp'))z--;if(state.keys.has('KeyS')||state.keys.has('ArrowDown'))z++;if(state.keys.has('KeyA')||state.keys.has('ArrowLeft'))x--;if(state.keys.has('KeyD')||state.keys.has('ArrowRight'))x++;const len=Math.hypot(x,z);if(!len)return;x/=len;z/=len;const c=Math.cos(state.yaw),s=Math.sin(state.yaw);const dx=x*c-z*s,dz=x*s+z*c;p.x=THREE.MathUtils.clamp(p.x+dx*CFG.moveSpeed*dt,-CFG.arena/2,CFG.arena/2);p.z=THREE.MathUtils.clamp(p.z+dz*CFG.moveSpeed*dt,-CFG.arena/2,CFG.arena/2)}
+function sendInput(stack=false,bomb=false){if(!state.room||amHost()||!state.game)return;const p=state.game.players[state.id];if(p)net({type:'input',id:state.id,x:p.x,z:p.z,stack,bomb},{target:hostId()})}
+function updateCamera(dt){const p=state.game?.players?.[state.id];if(!p||!state.three)return;const target=p.stacked?state.three.pad[p.team].clone().add(new THREE.Vector3(0,2.3,0)):new THREE.Vector3(p.x,1.4,p.z);const dist=p.stacked?8.5:8;const desired=new THREE.Vector3(target.x+Math.sin(state.yaw)*dist,target.y+2.8+Math.sin(state.pitch)*3,target.z+Math.cos(state.yaw)*dist);state.three.camera.position.lerp(desired,Math.min(1,dt*7));state.three.camera.lookAt(target)}
+function updateHUD(){if(!state.game)return;const t=Math.max(0,Math.ceil(state.game.remaining)),m=String(Math.floor(t/60)).padStart(2,'0'),s=String(t%60).padStart(2,'0');$('timer').textContent=`${m}:${s}`;const r=state.game.teams.red.stack.length,b=state.game.teams.blue.stack.length;$('redTowerBar').style.width=`${r*20}%`;$('blueTowerBar').style.width=`${b*20}%`;$('redTowerText').textContent=`${r} / 5 枚`;$('blueTowerText').textContent=`${b} / 5 枚`;const me=state.game.players[state.id];if(me){const elapsed=CFG.gameSeconds-state.game.remaining,ready=state.game.teams[me.team].bombReadyAt,remain=Math.max(0,Math.ceil(ready-elapsed));$('bombStatus').textContent=remain<=0?'💣 BOMB READY — B':`💣 BOMB ${Math.floor(remain/60)}:${String(remain%60).padStart(2,'0')}`}}
+function loop(now){if(!state.three||!state.game)return;const dt=Math.min(.05,Math.max(0,(now-state.three.last)/1000));state.three.last=now;if(amHost()&&!state.game.ended){localMove(dt);updateHost(dt)}else if(!state.game.ended){localMove(dt);if(now-state.lastSend>70){state.lastSend=now;sendInput(false,false)}}syncWorld();updateCamera(dt);updateHUD();for(const[id,m]of state.three.players){const p=state.game.players[id];if(!p)continue;m.rotation.y+=p.stacked?.003:.006;if(m.userData.knock)m.rotation.z=Math.sin(now*.03)*.18}for(const m of state.three.obs)m.rotation.y+=.01;state.three.renderer.render(state.three.scene,state.three.camera);if(!state.game.ended)requestAnimationFrame(loop)}
+function cleanupThree(){if(state.three){state.three.renderer.dispose();state.three.scene.clear();state.three=null}document.exitPointerLock?.()}
+
+// ---------- input/UI ----------
+$('playerName').value=state.name;initNostr();setStatus('準備OK — P2Pゲームに参加できます');
+$('createButton').onclick=()=>{$('createRoomName').value='Pineapple Tower';$('createPublic').checked=true;$('createCpuFill').checked=false;$('createModal').classList.remove('hidden')};
+$('createCancel').onclick=()=>$('createModal').classList.add('hidden');$('createConfirm').onclick=()=>createRoom();$('openRoomsButton').onclick=async()=>{show('rooms');await loadPublicRooms()};$('roomsBackButton').onclick=()=>show('menu');$('joinCodeButton').onclick=()=>{const id=$('joinCode').value.trim().toUpperCase();if(/^[A-Z0-9]{6}$/.test(id))joinPublicRoom(id,'Pineapple Tower');else alert('6文字のROOM CODEを入力してください。')};$('joinCode').addEventListener('keydown',e=>{if(e.key==='Enter')$('joinCodeButton').click()});$('cpuButton').onclick=()=>startCPU();
+$('leaveButton').onclick=async()=>{if(state.room){try{state.room.leave()}catch(_){}}await closeRoomAnnounce();state.room=null;state.peers.clear();state.infos=new Map([[state.id,{id:state.id,name:state.name,cpu:false}]]);state.started=false;cleanupThree();show('menu');$('roomCodeBox').classList.remove('hidden')};
+$('startButton').onclick=()=>{if(amHost())state.isCpu?startLocalCPU():startNetwork()};
+$('resultBack').onclick=async()=>{cleanupThree();state.started=false;$('result').classList.add('hidden');if(state.isCpu){state.isCpu=false;state.roomId=null;state.roomName='';show('menu')}else{$('leaveButton').click()}};
+$('roomName').onchange=()=>{if(amHost()){state.roomName=($('roomName').value.trim()||'Pineapple Tower').slice(0,24);announceRoom();updateLobby()}};
+$('publicRoom').onchange=()=>{if(amHost()){state.publicRoom=$('publicRoom').checked;announceRoom()}};$('cpuFill').onchange=()=>{if(amHost()){state.cpuFill=$('cpuFill').checked;updateLobby();announceRoom()}};
+window.addEventListener('keydown',e=>{if(['Space','ArrowUp','ArrowDown','ArrowLeft','ArrowRight'].includes(e.code))e.preventDefault();state.keys.add(e.code);if(!state.game||state.game.ended)return;if(e.code==='Space'&&!e.repeat){if(amHost())tryStack(state.id);else sendInput(true,false)}if(e.code==='KeyB'&&!e.repeat){if(amHost())tryBomb(state.id);else sendInput(false,true)}});window.addEventListener('keyup',e=>state.keys.delete(e.code));
+$('gameCanvas').onclick=()=>{if(state.game&&!state.locked)$('gameCanvas').requestPointerLock?.()};document.addEventListener('pointerlockchange',()=>state.locked=document.pointerLockElement===$('gameCanvas'));window.addEventListener('mousemove',e=>{if(!state.locked||!state.game)return;state.yaw-=e.movementX*.0025;state.pitch=THREE.MathUtils.clamp(state.pitch-e.movementY*.0018,.18,1.1)});window.addEventListener('resize',()=>{if(state.three){state.three.camera.aspect=innerWidth/innerHeight;state.three.camera.updateProjectionMatrix();state.three.renderer.setSize(innerWidth,innerHeight)}});
+async function startLocalCPU(){const g=newGame([{id:state.id,name:state.name,cpu:false},{id:'cpu-red-0',name:'CPU 1',cpu:true},{id:'cpu-red-1',name:'CPU 2',cpu:true},{id:'cpu-red-2',name:'CPU 3',cpu:true},{id:'cpu-red-3',name:'CPU 4',cpu:true},{id:'cpu-blue-0',name:'CPU 5',cpu:true},{id:'cpu-blue-1',name:'CPU 6',cpu:true},{id:'cpu-blue-2',name:'CPU 7',cpu:true},{id:'cpu-blue-3',name:'CPU 8',cpu:true},{id:'cpu-blue-4',name:'CPU 9',cpu:true}]);g.players[state.id].team='red';Object.entries(g.players).forEach(([id,p],i)=>p.team=i%2===0?'red':'blue');state.game=g;state.started=true;buildWorld();show('game');$('result').classList.add('hidden');showToast('CPU 5 vs 5 スタート！')}
+function showToast(text){const e=$('toast');e.textContent=text;e.classList.add('show');clearTimeout(showToast.t);showToast.t=setTimeout(()=>e.classList.remove('show'),1500)}
+
+setInterval(()=>{if(state.roomId&&state.publicRoom&&!state.isCpu&&!state.started)announceRoom()},20000);
+setInterval(()=>{if(screens.rooms.classList.contains('active'))loadPublicRooms()},12000);
+</script>
+</body>
+</html>
