@@ -81,14 +81,28 @@
 </div>
 </div>
 
-<script type="importmap">
-{"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.186.0/build/three.module.js","trystero":"https://esm.run/trystero"}}
-</script>
-<script type="module">
-import * as THREE from 'three';
-import { joinRoom, selfId } from 'trystero';
-
+<script src="https://cdn.jsdelivr.net/npm/three@0.186.0/build/three.min.js"></script>
+<script>
+const THREE = window.THREE;
+let joinRoom = null;
+let networkLibPromise = null;
 const T = window.NostrTools;
+
+async function ensureNetworkLibrary(){
+  if(joinRoom) return true;
+  if(!networkLibPromise){
+    networkLibPromise = import('https://esm.run/trystero').then(mod => {
+      if(typeof mod.joinRoom !== 'function') throw new Error('Trystero joinRoom が見つかりません');
+      joinRoom = mod.joinRoom;
+      return true;
+    }).catch(err => {
+      networkLibPromise = null;
+      throw err;
+    });
+  }
+  return networkLibPromise;
+}
+
 const $ = id => document.getElementById(id);
 const CFG = {
   maxPlayers:10, teamSize:5, gameSeconds:300, bombInterval:120, moveSpeed:5.2, arena:24,
@@ -98,7 +112,7 @@ const CFG = {
 };
 const screens={menu:$('menuScreen'),room:$('roomScreen'),rooms:$('roomsScreen'),game:$('gameScreen')};
 const state={
-  id:selfId,name:localStorage.getItem('pineapple_name')||'Pineapple',roomId:null,roomName:'',publicRoom:true,cpuFill:false,
+  id:(crypto.randomUUID ? crypto.randomUUID() : 'local-'+Math.random().toString(36).slice(2)),name:localStorage.getItem('pineapple_name')||'Pineapple',roomId:null,roomName:'',publicRoom:true,cpuFill:false,
   room:null,peers:new Map(),infos:new Map(),started:false,isCpu:false,game:null,three:null,keys:new Set(),yaw:0,pitch:.62,locked:false,lastSend:0,
   nostrSk:null,roomAnnounceTimer:null,roomsTimer:null
 };
@@ -191,13 +205,51 @@ function renderPlayers(id,arr){const el=$(id);el.innerHTML='';if(!arr.length){el
 function net(data,opt){if(!state.room)return;try{return state.roomAction?.send(data,opt)}catch(_){}}
 async function createRoom(){
   saveName();
-  state.roomId=randomCode();state.roomName=($('createRoomName').value.trim()||'Pineapple Tower').slice(0,24);state.publicRoom=$('createPublic').checked;state.cpuFill=$('createCpuFill').checked;state.isCpu=false;
-  state.room=joinRoom({appId:CFG.appId,rtcConfig:CFG.rtcConfig},state.roomId);bindRoom();state.infos=new Map([[state.id,{id:state.id,name:state.name,cpu:false}]]);updateLobby();show('room');$('createModal').classList.add('hidden');announceRoom();setStatus('P2Pルーム作成完了');
+  $('createConfirm').disabled=true;
+  setStatus('P2P通信ライブラリを読み込んでいます…');
+  try{
+    await ensureNetworkLibrary();
+    state.roomId=randomCode();
+    state.roomName=($('createRoomName').value.trim()||'Pineapple Tower').slice(0,24);
+    state.publicRoom=$('createPublic').checked;
+    state.cpuFill=$('createCpuFill').checked;
+    state.isCpu=false;
+    state.room=joinRoom({appId:CFG.appId,password:state.roomId,rtcConfig:CFG.rtcConfig},state.roomId);
+    bindRoom();
+    state.infos=new Map([[state.id,{id:state.id,name:state.name,cpu:false}]]);
+    updateLobby();
+    show('room');
+    $('createModal').classList.add('hidden');
+    announceRoom();
+    setStatus('P2Pルーム作成完了');
+  }catch(e){
+    console.error(e);
+    setStatus('通信ライブラリを読み込めませんでした。CPUモードはそのまま遊べます。');
+    alert('オンラインルームを作れませんでした。\n\nブラウザのインターネット接続を確認してください。');
+  }finally{
+    $('createConfirm').disabled=false;
+  }
 }
 async function joinPublicRoom(id,name){
   saveName();
-  state.roomId=id.toUpperCase();state.roomName=name||'Pineapple Tower';state.publicRoom=true;state.cpuFill=false;state.isCpu=false;
-  state.room=joinRoom({appId:CFG.appId,rtcConfig:CFG.rtcConfig},state.roomId);bindRoom();state.infos=new Map([[state.id,{id:state.id,name:state.name,cpu:false}]]);updateLobby();show('room');setStatus('P2Pルームへ接続中…');
+  try{
+    await ensureNetworkLibrary();
+    state.roomId=id.toUpperCase();
+    state.roomName=name||'Pineapple Tower';
+    state.publicRoom=true;
+    state.cpuFill=false;
+    state.isCpu=false;
+    state.room=joinRoom({appId:CFG.appId,password:state.roomId,rtcConfig:CFG.rtcConfig},state.roomId);
+    bindRoom();
+    state.infos=new Map([[state.id,{id:state.id,name:state.name,cpu:false}]]);
+    updateLobby();
+    show('room');
+    setStatus('P2Pルームへ接続中…');
+  }catch(e){
+    console.error(e);
+    setStatus('ルーム参加に失敗しました。');
+    alert('このルームへ接続できませんでした。\n\nROOM CODEを確認してください。');
+  }
 }
 function bindRoom(){
   const room=state.room;
@@ -298,7 +350,22 @@ function loop(now){if(!state.three||!state.game)return;const dt=Math.min(.05,Mat
 function cleanupThree(){if(state.three){state.three.renderer.dispose();state.three.scene.clear();state.three=null}document.exitPointerLock?.()}
 
 // ---------- input/UI ----------
-$('playerName').value=state.name;initNostr();setStatus('準備OK — P2Pゲームに参加できます');
+$('playerName').value=state.name;
+if(!THREE){
+  $('connectionStatus').textContent='3Dライブラリの読み込みに失敗しました。インターネット接続を確認してください。';
+}else{
+  initNostr();
+  setStatus('準備OK — CPU戦ならすぐ開始できます');
+}
+window.addEventListener('error',e=>{
+  console.error('PineappleTower error:',e.error||e.message);
+  if(e?.message) setStatus('エラー: '+e.message);
+});
+window.addEventListener('unhandledrejection',e=>{
+  console.error('PineappleTower rejection:',e.reason);
+  const message=e?.reason?.message||String(e.reason||'通信エラー');
+  setStatus('エラー: '+message);
+});
 $('createButton').onclick=()=>{$('createRoomName').value='Pineapple Tower';$('createPublic').checked=true;$('createCpuFill').checked=false;$('createModal').classList.remove('hidden')};
 $('createCancel').onclick=()=>$('createModal').classList.add('hidden');$('createConfirm').onclick=()=>createRoom();$('openRoomsButton').onclick=async()=>{show('rooms');await loadPublicRooms()};$('roomsBackButton').onclick=()=>show('menu');$('joinCodeButton').onclick=()=>{const id=$('joinCode').value.trim().toUpperCase();if(/^[A-Z0-9]{6}$/.test(id))joinPublicRoom(id,'Pineapple Tower');else alert('6文字のROOM CODEを入力してください。')};$('joinCode').addEventListener('keydown',e=>{if(e.key==='Enter')$('joinCodeButton').click()});$('cpuButton').onclick=()=>startCPU();
 $('leaveButton').onclick=async()=>{if(state.room){try{state.room.leave()}catch(_){}}await closeRoomAnnounce();state.room=null;state.peers.clear();state.infos=new Map([[state.id,{id:state.id,name:state.name,cpu:false}]]);state.started=false;cleanupThree();show('menu');$('roomCodeBox').classList.remove('hidden')};
